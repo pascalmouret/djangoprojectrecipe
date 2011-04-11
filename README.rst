@@ -4,7 +4,7 @@ djangoprojectrecipe
 
 This buildout recipe can be used to create the necessary commands to replace
 ``manage.py`` in a buildout environment. Optionally it can also generate 
-scripts for wsgi and fcgi.
+scripts for wsgi and fcgi servers as well as running tests.
 
 simple example::
 
@@ -38,7 +38,16 @@ The recipe supports the following options.
 ``extra-paths``
   All paths specified here will be used to extend the default Python
   path for the `bin/*` scripts. It is recommended to define these directly
-  in the ``[buildout]`` section and juste reference them. See the examples.
+  in the ``[buildout]`` section and just reference them on the django part.
+  See the examples.
+
+``test``
+  A list of django apps for which tests should be run with `bin/test`.
+
+``coverage``
+  The path to the directory where the test coverage html report should be 
+  generated. Make sure you have coverage installed (e.g add ``coverage`` to
+  ``eggs``.
 
 ``control-script``
   The name of the script created in the bin folder. This script is the
@@ -78,8 +87,8 @@ Another example
 ===============
 
 The next example shows you how to use some more of the options. Here we seperate
-out ``eggs`` and ``extra-paths`` onto the buildout configuration and use it both in
-a part to get a general python interpreter and a django instance with the
+out ``eggs`` and ``extra-paths`` onto the buildout configuration and use it both
+in a part to get a general python interpreter and a django instance with the
 same paths::
 
   [buildout]
@@ -92,13 +101,13 @@ same paths::
     South
     django-cms
   extra-paths = 
-      src
-      ../external_apps/
+      ${buildout:directory}/src
+      ${buildout:directory}/../external_apps/
       /some/other/directory/to/add/to/pythonpath/
-      parts/django_svn/django/
+      ${buildout:directory}/parts/django_svn/django/
   
   [versions]
-  django = 1.2.4
+  Django = 1.2.5
   
   [python]
   recipe = zc.recipe.egg
@@ -115,14 +124,18 @@ same paths::
   eggs = ${buildout:eggs}
   extra-paths = ${buildout:extra-paths}
 
+Although djangoprojectrecipe supports paths relative to the buildout root in
+``extra-paths``, some other recipes do not. For that reason it is recommended to
+always explicitly set the root with the ``${buildout:directory}`` variable.
 
-Using django trunk
-==================
+Installing Django from svn
+==========================
 
-``djangoprojectrecipe`` does not handle installing django at all. The easiest 
-case is when installing released versions from pypi (just add ``django`` to 
+``djangoprojectrecipe`` does not handle installing django at all. There are
+plenty other recipies around that already handle that job.
+If all you need is a released version of Django, it's as easy as adding ``Django`` to 
 ``eggs``). If you want to use django trunk or some special branch, 
-`infrae.subversion` may be of service::
+``infrae.subversion`` may be of service::
 
   [buildout]
   versions=versions
@@ -137,7 +150,7 @@ case is when installing released versions from pypi (just add ``django`` to
       django-whatever
   
   [versions]
-  django=
+  Django=
   
   [svn]
   recipe = infrae.subversion
@@ -155,6 +168,48 @@ for django, because otherwise buildout will continue to use the packaged
 version.
 
 See http://pypi.python.org/pypi/infrae.subversion for more examples.
+
+Installing Django from git
+==========================
+
+  [buildout]
+  versions=versions
+  develop = 
+      parts/svn/django/
+  parts = 
+      svn
+      django
+      django-git
+  eggs = 
+      Django
+      South
+      django-whatever
+  
+  [versions]
+  Django=
+  
+  [django-git]
+  recipe=zerokspot.recipe.git
+  repository=git://github.com/django/django.git
+  branch=master
+  as_egg=True
+  
+  [django]
+  recipe = djangoprojectrecipe
+  settings = myproject.settings_dev
+  eggs = ${buildout:eggs}
+  extra-paths = ${buildout:extra-paths}
+
+.. Warning::
+   You'll have to run buildout twice when you add a git or svn checkout of
+   something. Buildout will not add the checkout to the pythonpath the first
+   time because it checks for existance of setup.py in the checkout location
+   before the checkout happens.
+
+Installing django from the tarball
+==================================
+
+
 
 
 Example configuration for mod_wsgi

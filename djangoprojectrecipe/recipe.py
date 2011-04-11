@@ -64,6 +64,10 @@ class Recipe(object):
         options.setdefault('fcgi', 'false')
         options.setdefault('logfile', '')
         
+        options.setdefault('test', '')
+        options.setdefault('testrunner', 'test')
+        options.setdefault('coverage', '')
+        
         self.extra_paths = [
             os.path.join(buildout['buildout']['directory'], p.strip())
             for p in options.get('extra-paths', '').split('\n')
@@ -83,7 +87,10 @@ class Recipe(object):
         
         # Create the Django management script
         script_paths.extend(self.create_manage_script(self.extra_paths, ws))
-
+        
+        # Create the test runner
+        script_paths.extend(self.create_test_runner(self.extra_paths, ws))
+        
         # Make the wsgi and fastcgi scripts if enabled
         script_paths.extend(self.make_scripts(self.extra_paths, ws))
         
@@ -106,6 +113,21 @@ class Recipe(object):
         )
         return scripts
 
+    def create_test_runner(self, extra_paths, ws):
+        site_config=self.get_main_site_config()
+        apps = self.options.get('test', '').split()
+        coverage = self.options.get('coverage')
+        apps_str = '[%s]' % ','.join(["'%s'" % app for app in apps])
+        return zc.buildout.easy_install.scripts(
+                    [(self.options.get('testrunner'),
+                      'djangoprojectrecipe.test', 'main')],
+                    ws, self.options['executable'],
+                    self.options['bin-directory'],
+                    extra_paths = extra_paths,
+                    arguments = "'%s', coverage_html_path='%s', apps=%s" % (
+                                    site_config['settings_module'],
+                                    coverage, apps_str)
+                    )
 
     def make_scripts(self, extra_paths, ws):
         site_config=self.get_main_site_config()
